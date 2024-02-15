@@ -7,8 +7,30 @@ classdef spin
         Pauli_z = q_rep.Q_operator(constant.sigma_z,{[2,2]});
         st_0 = q_rep.Q_ket(constant.spin_up,{[2,1]});
         st_1 = q_rep.Q_ket(constant.spin_down,{[2,1]});
+        bell_phi_p = q_rep.Q_ket(func.spin.spin_basis(N,config),{[2,1]})
+
     end
     methods (Static)
+        function state = spin_basis(N,config)
+            % create the direct product basis ket for a N spin 1/2 system
+            %   Input 
+            %   N - int, total number of spin spaces 
+            %   config - vec, config of ket, 0 for up and 1 for down
+            
+            %   Output: Q_ket of direct product
+            for j = 1:N
+                if config(j) == 0
+                    new_s = func.spin.st_0;
+                else
+                    new_s = func.spin.st_1;
+                end
+                if j == 1
+                    state = new_s;
+                else
+                    state = func.gen.tensor(state,new_s);
+                end
+            end
+        end
 
         function sop = spin_op(N,i,sub_op)
             %create the spin operator acting on space i of N spin spaces
@@ -56,10 +78,12 @@ classdef spin
             xop = func.spin.ammt_tot(N,0.5*func.spin.Pauli_x);
             yop = func.spin.ammt_tot(N,0.5*func.spin.Pauli_y);
             zop = func.spin.ammt_tot(N,0.5*func.spin.Pauli_z);
-            J_mat = dot(direction,[xop.matrix;yop.matrix;zop.matrix]);
-            Jop = Q_operator(J_mat,xop.dims);
+            
+            J_mat = (direction(1)*xop.matrix+direction(2)*yop.matrix ...
+                    +direction(3)*zop.matrix);
+            Jop = q_rep.Q_operator(J_mat,xop.dims);
         end
-        function vec = MSD_vec(state)
+        function vec = MSD_vec(state,normalized)
             %   compute the mean spin direction given a state of spin 1/2
             %   systems
             %   state - Q_operator, quantum state of the system 
@@ -67,12 +91,43 @@ classdef spin
             %   output:
             %   3-vec
             N_spin = length(state.dims);
-            jx = func.gen.expect(func.spin.ammt_tot(N_spin,func.spin.Pauli_x),state);
-            jy = func.gen.expect(func.spin.ammt_tot(N_spin,func.spin.Pauli_y),state);
-            jz = func.gen.expect(func.spin.ammt_tot(N_spin,func.spin.Pauli_z),state);
-            vec = [jx,jy,jz]/norm([jx,jy,jz]);
+            jx = func.gen.expect(func.spin.ammt_tot(N_spin,0.5*func.spin.Pauli_x),state);
+            jy = func.gen.expect(func.spin.ammt_tot(N_spin,0.5*func.spin.Pauli_y),state);
+            jz = func.gen.expect(func.spin.ammt_tot(N_spin,0.5*func.spin.Pauli_z),state);
+            if normalized
+                vec = [jx,jy,jz]/norm([jx,jy,jz]);
+            else
+                vec = [jx,jy,jz];
+            end
         end
-        
+        function result = var_p(state)
+            %compute the minimum variance perpendicular to MSD
+            %   state - Q_operator/ket, quantum state of the system 
+            %   
+            %   output:
+            %   float
+            N_spin = length(state.dims); 
+            [theta,phi] = func.aux.polar_conv(func.spin.MSD_vec(state,1));
+            n1 = [-sin(phi),cos(phi),0];
+            n2 = [cos(theta)*cos(phi),cos(theta)*sin(phi),-sin(theta)];
+            J1 = Jn_op(N_spin,n1); J2 = Jn_op(N_spin,n2);
+            J1sq = func.gen.expect(J1*J1,state); 
+            J2sq = func.gen.expect(J2*J2,state);
+            cov = 0.5*func.gen.expect(J1*J2 + J2*J1, state);
+            result  = 0.5*(J1sq+J2sq - np.sqrt((J1sq-J2sq)^2 + 4*cov^2));       
+        end
+
+        function result = sq_w(state)
+            %compute the spin squeezing parameter defined by Wineland
+            %   state - Q_operator/ket, quantum state of the system 
+            %   
+            %   output:
+            %   float
+            N_spin = length(state.dims); 
+            var_p = func.spin.var_p(state);
+            bnorm = (norm(func.spin.MSD_vec(state,0)))^2;
+            result = N_spin*var_p/bnorm;
+        end
     end
 end
 
