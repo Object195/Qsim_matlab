@@ -7,14 +7,14 @@ classdef spin
         Pauli_z = q_rep.Q_operator(constant.sigma_z,{[2,2]});
         st_0 = q_rep.Q_ket(constant.spin_up,{[2,1]});
         st_1 = q_rep.Q_ket(constant.spin_down,{[2,1]});
-        bell_phi_p = 1/np.sqrt(2)*(func.spin.z_basis(N,[0,0]) ...
-            +func.spin.z_basis(N,[1,1]))
-        bell_phi_m = 1/np.sqrt(2)*(func.spin.z_basis(N,[0,0]) ...
-            -func.spin.z_basis(N,[1,1]))
-        bell_psi_p = 1/np.sqrt(2)*(func.spin.z_basis(N,[0,1]) ...
-            +func.spin.z_basis(N,[1,0]))
-        bell_psi_m = 1/np.sqrt(2)*(func.spin.z_basis(N,[0,1]) ...
-            -func.spin.z_basis(N,[1,0]))
+        bell_phi_p = 1/sqrt(2)*(func.spin.z_basis(2,[0,0]) ...
+            +func.spin.z_basis(2,[1,1]))
+        bell_phi_m = 1/sqrt(2)*(func.spin.z_basis(2,[0,0]) ...
+            -func.spin.z_basis(2,[1,1]))
+        bell_psi_p = 1/sqrt(2)*(func.spin.z_basis(2,[0,1]) ...
+            +func.spin.z_basis(2,[1,0]))
+        bell_psi_m = 1/sqrt(2)*(func.spin.z_basis(2,[0,1]) ...
+            -func.spin.z_basis(2,[1,0]))
 
     end
     methods (Static)
@@ -114,14 +114,15 @@ classdef spin
             %   output:
             %   float
             N_spin = length(state.dims); 
-            [theta,phi] = func.aux.polar_conv(func.spin.MSD_vec(state,1));
+            [theta,phi] = func.auxi.polar_conv(func.spin.MSD_vec(state,1));
             n1 = [-sin(phi),cos(phi),0];
             n2 = [cos(theta)*cos(phi),cos(theta)*sin(phi),-sin(theta)];
-            J1 = Jn_op(N_spin,n1); J2 = Jn_op(N_spin,n2);
+            display(n1);display(n2);
+            J1 = func.spin.Jn_op(N_spin,n1); J2 = func.spin.Jn_op(N_spin,n2);
             J1sq = func.gen.expect(J1*J1,state); 
             J2sq = func.gen.expect(J2*J2,state);
             cov = 0.5*func.gen.expect(J1*J2 + J2*J1, state);
-            result  = 0.5*(J1sq+J2sq - np.sqrt((J1sq-J2sq)^2 + 4*cov^2));       
+            result  = 0.5*(J1sq+J2sq - sqrt((J1sq-J2sq)^2 + 4*cov^2));       
         end
 
         function result = sq_w(state)

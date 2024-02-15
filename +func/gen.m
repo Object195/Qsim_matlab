@@ -53,7 +53,7 @@ classdef gen
             elseif (isa(A, 'q_rep.Q_ket') && isa(B, 'q_rep.Q_ket'))
                 result_m = kron(A.vec,B.vec);
                 new_dim = [A.dims,B.dims];
-                t_prod = q_rep.Q_vec(result_m,new_dim);
+                t_prod = q_rep.Q_ket(result_m,new_dim);
             else
                 error('Both inputs must be instances of Q_operator or Q_ket.');
             end
