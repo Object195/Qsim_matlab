@@ -6,6 +6,10 @@ classdef Q_operator
         matrix = [] %matrix representation 
         dims = {} %dimension of Hilbert space
         qsize %dimension of representation
+        %compute the following quantities only if specific functions are
+        %called
+        Emat = [] %eigenvalue matrix 
+        Umat = [] %unitary transformation matrix from eigenbasis to orignal basis
     end
     
     methods
@@ -107,6 +111,23 @@ classdef Q_operator
             result = q_rep.Q_operator(obj.matrix');
             result = copy_dim(result,obj);
         end
+        % Compute Eigenvalue
+        function obj = e_decomp(obj)
+            if isempty(obj.Emat)
+                [obj.Umat,obj.Emat] = eig(obj.matrix);
+            end
+        end
+        % display eigenvalue
+        function result = e_val(obj)
+            obj = obj.e_decomp();
+            result = diag(obj.Emat);
+        end
+        % exponential of the operator (times some scalar parameter a)
+        function result = exp(obj,a)
+            r_mat = (obj.Umat)*diag(exp(a*obj.e_val))*ctranspose(obj.Umat);
+            result = q_rep.Q_operator(r_mat,obj.dims);
+        end
+
         %partial trace
         function result = ptrace(obj,index)
             % index is an array that contains the index of Hilbert spaces
