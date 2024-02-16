@@ -117,7 +117,6 @@ classdef spin
             [theta,phi] = func.auxi.polar_conv(func.spin.MSD_vec(state,1));
             n1 = [-sin(phi),cos(phi),0];
             n2 = [cos(theta)*cos(phi),cos(theta)*sin(phi),-sin(theta)];
-            display(n1);display(n2);
             J1 = func.spin.Jn_op(N_spin,n1); J2 = func.spin.Jn_op(N_spin,n2);
             J1sq = func.gen.expect(J1*J1,state); 
             J2sq = func.gen.expect(J2*J2,state);
@@ -125,6 +124,48 @@ classdef spin
             result  = 0.5*(J1sq+J2sq - sqrt((J1sq-J2sq)^2 + 4*cov^2));       
         end
 
+        function result = sq_dir(state,plot_vec)
+            %   compute optimal spin direction
+            %   state - Q_operator/ket, quantum state of the system 
+            %   plot - bool, if true, plot the vector on Bloch sphere
+            %   output:
+            %   float
+            N_spin = length(state.dims); 
+            [theta,phi] = func.auxi.polar_conv(func.spin.MSD_vec(state,1));
+            n1 = [-sin(phi),cos(phi),0];
+            n2 = [cos(theta)*cos(phi),cos(theta)*sin(phi),-sin(theta)];
+            J1 = func.spin.Jn_op(N_spin,n1); J2 = func.spin.Jn_op(N_spin,n2);
+            J1sq = func.gen.expect(J1*J1,state); 
+            J2sq = func.gen.expect(J2*J2,state);
+            cov = 0.5*func.gen.expect(J1*J2 + J2*J1, state);
+            A = J1sq-J2sq; B = 2*cov;
+            nAB = sqrt(A^2+B^2);
+            if nAB == 0
+                phi_s = 0;
+            else
+                if B<=0
+                    phi_s = 0.5*acos(-A/nAB);
+                else
+                    phi_s = pi-0.5*acos(-A/nAB);
+                end
+            end
+            result = cos(phi_s)*n1 + sin(phi_s)*n2;
+            if plot_vec
+                % Create the unit sphere
+                [x, y, z] = sphere;
+                figure;
+                surf(x, y, z, 'FaceAlpha', 0.5); % Set transparency to 0.5
+                hold on;
+                axis equal; % Ensure the aspect ratio is equal to make the sphere look correct
+                grid on;
+                xlabel('X');
+                ylabel('Y');
+                zlabel('Z');
+                quiver3(0, 0, 0, result(1), result(2), result(3), 'r', 'LineWidth', 2, 'MaxHeadSize', 0.5);
+                title('Optimal squeezing direction');
+                hold off;
+            end
+        end
         function result = sq_w(state)
             %compute the spin squeezing parameter defined by Wineland
             %   state - Q_operator/ket, quantum state of the system 

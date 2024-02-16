@@ -6,5 +6,5 @@ B.dims;
 %B=q_func.tensor(A,A) 
 %B.matrix
 v = sqrt(1/3)*func.spin.z_basis(2,[0,0])+sqrt(2/3)*func.spin.z_basis(2,[1,1]);
-func.spin.sq_w(v)
+func.spin.sq_dir(v,1)
             
