@@ -127,7 +127,15 @@ classdef Q_operator
             r_mat = (obj.Umat)*diag(exp(a*obj.e_val))*ctranspose(obj.Umat);
             result = q_rep.Q_operator(r_mat,obj.dims);
         end
-
+        % Von-Neumann entropy
+        function result = entropy(obj)
+            e_vec = obj.e_val;
+            result = sum(arrayfun(@(x) -x*log(x),e_vec));
+        end
+        %trace
+        function result = tr(obj)
+            result = trace(obj.matrix);
+        end
         %partial trace
         function result = ptrace(obj,index)
             % index is an array that contains the index of Hilbert spaces
@@ -146,32 +154,32 @@ classdef Q_operator
             [grids{:}] = ndgrid(comb_cell_vec{:});
             combinations = cellfun(@(x) x(:), grids, 'UniformOutput', false);
             ind_array = [combinations{:}];
-            
+            %disp(ind_array)
             %generate identity operator for each subspace (standard basis)
             comb_cell_id =  arrayfun(@(x) eye(x),trace_dim,'UniformOutput', false);
             %display(comb_cell_id)
             %iterate and apply all projections
             result_mat = 0;
             for i = 1:size(ind_array,1) % index for row of iteration grid, index of projection
-                for j = 1:size(ind_array,2) % index for subspace to be traced, ensured in increasing order
-                    %generate transformation matrix
-                    for k = 1:length(obj.dims) %index for all subspace
-                        new_d = obj.dims{k}(1);
-                        if mask(k)
-                        %use basis for the subspace
-                            newmat = comb_cell_id{j}(:,ind_array(i,j)); %index for basis of subspace j
-                        else
-                            newmat = eye(new_d);
-                        end
-                            
-                        if k == 1
-                            t_mat = newmat;
-                        else
-                            t_mat = kron(t_mat,newmat);
-                        end
+                %generate transformation matrix
+                 j=1; %this index counts subspace to be traced
+                 for k = 1:length(obj.dims) %index for all subspace
+                     new_d = obj.dims{k}(1);
+                    if mask(k)
+                    %use basis for the subspace
+                        newmat = comb_cell_id{j}(:,ind_array(i,j)); %index for basis of subspace j
+                        j = j+1; %move the index j 1 step forward
+                    else
+                        newmat = eye(new_d);
                     end
-                end
-                result_mat = result_mat + transpose(t_mat)*obj.matrix*t_mat;
+                        
+                    if k == 1
+                        t_mat = newmat;
+                    else
+                        t_mat = kron(t_mat,newmat);
+                    end
+                 end
+                 result_mat = result_mat + transpose(t_mat)*obj.matrix*t_mat;
             end
             result = q_rep.Q_operator(result_mat,obj.dims(logical(not(mask))));
         end
