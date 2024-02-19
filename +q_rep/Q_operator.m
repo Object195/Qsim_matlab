@@ -129,8 +129,18 @@ classdef Q_operator
         end
         % Von-Neumann entropy
         function result = entropy(obj)
-            e_vec = obj.e_val;
-            result = sum(arrayfun(@(x) -x*log(x),e_vec));
+            result = 0;
+            evec = obj.e_val;
+            for i = 1:length(evec)
+                if evec(i) > 0
+                    result = result - evec(i)*log(evec(i));
+                end
+            end
+        end
+        %linear entropy
+        function result = linear_entropy(obj)
+            N = obj.qsize; rho2 = obj*obj;
+            result = N/(N-1) * (1-rho2.tr());
         end
         %trace
         function result = tr(obj)

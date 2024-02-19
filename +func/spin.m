@@ -5,6 +5,8 @@ classdef spin
         Pauli_x = q_rep.Q_operator(constant.sigma_x,{[2,2]});
         Pauli_y = q_rep.Q_operator(constant.sigma_y,{[2,2]});
         Pauli_z = q_rep.Q_operator(constant.sigma_z,{[2,2]});
+        up = q_rep.Q_operator(constant.up,{[2,2]});
+        down = q_rep.Q_operator(constant.down,{[2,2]});
         st_0 = q_rep.Q_ket(constant.spin_up,{[2,1]});
         st_1 = q_rep.Q_ket(constant.spin_down,{[2,1]});
         bell_phi_p = 1/sqrt(2)*(func.spin.z_basis(2,[0,0]) ...

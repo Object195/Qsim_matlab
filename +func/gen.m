@@ -31,13 +31,17 @@ classdef gen
                 error('Inputs must be instances of Q_operator and Q_operator/ket.');
             end
         end
-        function iop = identity(N)
+        function iop = identity(N,dims)
             %   create an N dimensional identity operator
             %   Input 
             %   N - int, dimensnion of the space 
             %   
             %   Output: Q_operator 
-            iop = q_rep.Q_operator(eye(N),{[N,N]});
+            if nargin > 1
+                iop = q_rep.Q_operator(eye(N),dims);
+            else
+                iop = q_rep.Q_operator(eye(N),{[N,N]});
+            end
         end
 
         function t_prod = tensor(A,B)
