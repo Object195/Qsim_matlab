@@ -179,6 +179,19 @@ classdef spin
             bnorm = (norm(func.spin.MSD_vec(state,0)))^2;
             result = N_spin*var_p/bnorm;
         end
+
+        function result = sq_ku(state)
+            %compute the spin squeezing parameter defined by Kitagawa and
+            %Ueda
+            %   state - Q_operator/ket, quantum state of the system 
+            %   
+            %   output:
+            %   float
+            N_spin = length(state.dims); 
+            var_p = func.spin.var_p(state);
+            result = 4*var_p/N_spin;
+        end
+
     end
 end
 
