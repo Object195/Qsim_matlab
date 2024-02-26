@@ -191,7 +191,75 @@ classdef spin
             var_p = func.spin.var_p(state);
             result = 4*var_p/N_spin;
         end
-
+        function result = sq_cell(state_cell,sq_type)
+            %compute the spin squeezing parameter for a cell
+            %of states of the same dimension
+            %   state_cell - cell of Q_operator/ket, quantum state of the system 
+            %   sq_type - str, can be 'w' (Wineland) or 'u' (Kitagawa and Ueda) 
+            %   output:
+            %   1d vector of float
+            N = length(state_cell{1}.dims); 
+            Jx = func.spin.ammt_tot(N,0.5*func.spin.Pauli_x);
+            Jy = func.spin.ammt_tot(N,0.5*func.spin.Pauli_y);
+            Jz = func.spin.ammt_tot(N,0.5*func.spin.Pauli_z);
+            result = zeros(1,length(state_cell));
+            for i = 1:length(state_cell)
+                state = state_cell{i};
+                %compute MSD
+                jx = func.gen.expect(Jx,state);
+                jy = func.gen.expect(Jy,state);
+                jz = func.gen.expect(Jz,state);
+                J_abs = jx^2 + jy^2 + jz^2;
+                %compute MSD and perpendicular directions
+                [theta,phi] = func.auxi.polar_conv([jx,jy,jz]/sqrt(J_abs));
+                n1 = [-sin(phi),cos(phi),0];
+                n2 = [cos(theta)*cos(phi),cos(theta)*sin(phi),-sin(theta)];
+                J1 = Jx*n1(1) +   Jy*n1(2) + Jz*n1(3);
+                J2 = Jx*n2(1) +   Jy*n2(2) + Jz*n2(3);
+                %compute expectation
+                J1sq = func.gen.expect(J1*J1,state); 
+                J2sq = func.gen.expect(J2*J2,state);
+                cov = 0.5*func.gen.expect(J1*J2 + J2*J1, state);
+                J_var  = 0.5*(J1sq+J2sq - sqrt((J1sq-J2sq)^2 + 4*cov^2));
+                if sq_type == 'w'
+                    result(i) = N * J_var / J_abs;
+                elseif sq_type == 'u'
+                    result(i) = 4*J_var/N;
+                else
+                    error('Undefined type of spin-squeezing parameter.')
+                end
+            end
+        end
+        function result = sq_z(state_cell,sq_type)
+            %compute the spin squeezing parameter for a cell
+            %of states that polarized along z direction
+            %   state_cell - cell of Q_operator/ket, quantum state of the system 
+            %   sq_type - str, can be 'w' (Wineland) or 'u' (Kitagawa and Ueda) 
+            %   output:
+            %   1d vector of float
+            N = length(state_cell{1}.dims); 
+            J1 = func.spin.ammt_tot(N,0.5*func.spin.Pauli_x);
+            J2 = func.spin.ammt_tot(N,0.5*func.spin.Pauli_y);
+            J3 = func.spin.ammt_tot(N,0.5*func.spin.Pauli_z);
+            J1sq_op = J1*J1; J2sq_op = J2*J2; 
+            cov_op = 0.5 * (J1*J2 + J2*J1);
+            result = zeros(1,length(state_cell));
+            for i = 1:length(state_cell)
+                state = state_cell{i};
+                J1sq = func.gen.expect(J1sq_op,state); 
+                J2sq = func.gen.expect(J2sq_op,state);
+                cov = func.gen.expect(cov_op, state);
+                J_abs = (func.gen.expect(J3, state))^2;
+                J_var  = 0.5*(J1sq+J2sq - sqrt((J1sq-J2sq)^2 + 4*cov^2));
+                if sq_type == 'w'
+                    result(i) = N * J_var / J_abs;
+                elseif sq_type == 'u'
+                    result(i) = 4*J_var/N;
+                else
+                    error('Undefined type of spin-squeezing parameter.')
+                end
+            end
+        end
     end
 end
 
