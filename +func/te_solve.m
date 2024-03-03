@@ -10,7 +10,7 @@ classdef te_solve
             % H- Q_operator, the Hamiltonain of the system 
             % t_sample, -vector, time points for sampling
             % obs, cell of Q_operator, observable 
-            H = H.e_decomp(); %Diagonalize
+            H = H.e_decomp('all'); %Diagonalize
             if isa(i_state, 'q_rep.Q_ket')
                 if isempty(obs)
                     result = arrayfun(@(t) H.exp(-1i*t)*i_state,tsample, ...

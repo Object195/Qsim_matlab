@@ -31,16 +31,23 @@ classdef gen
                 error('Inputs must be instances of Q_operator and Q_operator/ket.');
             end
         end
-        function iop = identity(N,dims)
+        function iop = identity(N,dims,dtype)
             %   create an N dimensional identity operator
             %   Input 
             %   N - int, dimensnion of the space 
-            %   
+            %   dtype - str, matrix data type 
             %   Output: Q_operator 
-            if nargin > 1
-                iop = q_rep.Q_operator(eye(N),dims);
+            if strcmp(dtype ,'sparse')
+                id = speye(N);
+            elseif strcmp(dtype,'full')
+                id = eye(N);
             else
-                iop = q_rep.Q_operator(eye(N),{[N,N]});
+                error('incorrect data type')
+            end
+            if nargin > 1
+                iop = q_rep.Q_operator(id,dims);
+            else
+                iop = q_rep.Q_operator(id,{[N,N]});
             end
         end
 

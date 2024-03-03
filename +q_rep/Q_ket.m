@@ -5,6 +5,7 @@ classdef Q_ket
         vec = [] %matrix representation 
         dims = {} %dimension of Hilbert space
         qsize  %dimension of representation
+        dtype = '' %data type of matrix representation
     end
     
     methods
@@ -25,6 +26,28 @@ classdef Q_ket
                  fe1 = cellfun(@(x) x(1), obj.dims); % Extracts the first element of each list
                  fe2 = cellfun(@(x) x(2), obj.dims); % Extracts the second element of each list
                  obj.qsize = [prod(fe1),prod(fe2)]; % Multiplies all the first elements together
+        end
+        %update data type according to matrix of construction
+        function obj = update_dtype(obj)
+            if issparse(obj.vec)
+                obj.dtype = 'sparse';
+            else
+                obj.dtype = 'full';
+            end
+        end
+        %change data type
+        function obj = dtype_conv(obj,new_type)
+            if not(strcmp(new_type, obj.dtype))
+                if strcmp(new_type, 'sparse')
+                    obj.vec = sparse(obj.vec);
+                    obj.dtype = 'sparse';
+                elseif strcmp(new_type, 'full')
+                    obj.vec = full(obj.vec);
+                    obj.dtype = 'full';
+                else
+                    error('incorrect data type')
+                end
+            end
         end
         % Addition
         function result = plus(obj, b)

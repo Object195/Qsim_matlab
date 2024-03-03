@@ -9,29 +9,32 @@ classdef spin
         down = q_rep.Q_operator(constant.down,{[2,2]});
         st_0 = q_rep.Q_ket(constant.spin_up,{[2,1]});
         st_1 = q_rep.Q_ket(constant.spin_down,{[2,1]});
-        bell_phi_p = 1/sqrt(2)*(func.spin.z_basis(2,[0,0]) ...
-            +func.spin.z_basis(2,[1,1]))
-        bell_phi_m = 1/sqrt(2)*(func.spin.z_basis(2,[0,0]) ...
-            -func.spin.z_basis(2,[1,1]))
-        bell_psi_p = 1/sqrt(2)*(func.spin.z_basis(2,[0,1]) ...
-            +func.spin.z_basis(2,[1,0]))
-        bell_psi_m = 1/sqrt(2)*(func.spin.z_basis(2,[0,1]) ...
-            -func.spin.z_basis(2,[1,0]))
+        bell_phi_p = 1/sqrt(2)*(func.spin.z_basis(2,[0,0],'sparse') ...
+            +func.spin.z_basis(2,[1,1],'sparse'))
+        bell_phi_m = 1/sqrt(2)*(func.spin.z_basis(2,[0,0],'sparse') ...
+            -func.spin.z_basis(2,[1,1],'sparse'))
+        bell_psi_p = 1/sqrt(2)*(func.spin.z_basis(2,[0,1],'sparse') ...
+            +func.spin.z_basis(2,[1,0],'sparse'))
+        bell_psi_m = 1/sqrt(2)*(func.spin.z_basis(2,[0,1],'sparse') ...
+            -func.spin.z_basis(2,[1,0],'sparse'))
 
     end
     methods (Static)
-        function state = z_basis(N,config)
+        function state = z_basis(N,config,dtype)
             % create the direct product basis ket for a N spin 1/2 system
             %   Input 
             %   N - int, total number of spin spaces 
             %   config - vec, config of ket, 0 for up and 1 for down
             
             %   Output: Q_ket of direct product
+           
+            st_0 = func.spin.st_0.dtype_conv(dtype);
+            st_1 = func.spin.st_1.dtype_conv(dtype);
             for j = 1:N
                 if config(j) == 0
-                    new_s = func.spin.st_0;
+                    new_s = st_0;
                 else
-                    new_s = func.spin.st_1;
+                    new_s = st_1;
                 end
                 if j == 1
                     state = new_s;
@@ -41,7 +44,7 @@ classdef spin
             end
         end
 
-        function sop = spin_op(N,i,sub_op)
+        function sop = spin_op(N,i,sub_op,dtype)
             %create the spin operator acting on space i of N spin spaces
             % the specific form is determined by Q_operator sub_op, the
             % dimension of each spin space is determined by sub_op
@@ -51,47 +54,68 @@ classdef spin
             %   i - int, index of spin space to be acting on 
             %   sub_op Q_operator, representation of subspace spin operator
             %   Output: Q_operator of direct product
-
             mask = zeros(N); mask(i) = 1;
+            sub_op = sub_op.dtype_conv(dtype);
             for j = 1:N
                 if mask(j)
                     new_op = sub_op;
                 else
-                    new_op = func.gen.identity(sub_op.qsize);
+                    new_op = func.gen.identity(sub_op.qsize,dtype);
                 end
                 if j == 1
                     sop = new_op;
                 else
-                    sop = func.gen.tensor(sop,new_op);
+                    sop = func.gen.tensor(sop,new_op,dtype);
                 end
             end
         end
 
-        function Jop = ammt_tot(N,sub_op)
+        function Jop = ammt_tot(N,sub_op,dtype)
             %create the total spin operator with specified dimension
             %   N - int, total number of spin spaces 
             %   sub_op- Q_operator, representation of single subspace spin operator
             %   output:
-            %    Q_operator
-            Jop = 0;
+            %   Q_operator
+
             for j = 1:N
-                Jop = Jop + func.spin.spin_op(N,j,sub_op);
+                if j == 1
+                    Jop = func.spin.spin_op(N,j,sub_op,dtype);
+                else
+                    Jop = Jop + func.spin.spin_op(N,j,sub_op,dtype);
+                end
             end
         end
-        function Jop = Jn_op(N,direction)
+
+        function op_cell = J_cell(N,dtype)
+            %   generate a cell of Jx, Jy, Jz total ammt operators
+            %   N - int, total number of spin spaces 
+            %   dtype- str, data type of the matirx representation
+            %   output:
+            %   cell of Q_operator
+            xop = func.spin.ammt_tot(N,0.5*func.spin.Pauli_x,dtype);
+            yop = func.spin.ammt_tot(N,0.5*func.spin.Pauli_y,dtype);
+            zop = func.spin.ammt_tot(N,0.5*func.spin.Pauli_z,dtype);
+            
+        end
+        
+        function Jop = Jn_op(N,direction,dtype)
             %   spin 1/2 operator Jn with specified direction
             %   N - int, total number of spin spaces 
             %   direction- vec, 3D vector for direction
             %   output:
             %    Q_operator
-            xop = func.spin.ammt_tot(N,0.5*func.spin.Pauli_x);
-            yop = func.spin.ammt_tot(N,0.5*func.spin.Pauli_y);
-            zop = func.spin.ammt_tot(N,0.5*func.spin.Pauli_z);
+
+            xop = func.spin.ammt_tot(N,0.5*func.spin.Pauli_x,dtype);
+            yop = func.spin.ammt_tot(N,0.5*func.spin.Pauli_y,dtype);
+            zop = func.spin.ammt_tot(N,0.5*func.spin.Pauli_z,dtype);
             
             J_mat = (direction(1)*xop.matrix+direction(2)*yop.matrix ...
                     +direction(3)*zop.matrix);
             Jop = q_rep.Q_operator(J_mat,xop.dims);
         end
+
+        
+
         function vec = MSD_vec(state,normalized)
             %   compute the mean spin direction given a state of spin 1/2
             %   systems

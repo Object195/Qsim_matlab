@@ -3,11 +3,12 @@ classdef Q_operator
     %  (only square matrices are included)
     
     properties
-        matrix = [] %matrix representation 
+        matrix = [] % sparse matrix representation 
         dims = {} %dimension of Hilbert space
         qsize %dimension of representation
         %compute the following quantities only if specific functions are
         %called
+        dtype = '' %data type of matrix representation
         Emat = [] %eigenvalue matrix 
         Umat = [] %unitary transformation matrix from eigenbasis to orignal basis
     end
@@ -21,6 +22,7 @@ classdef Q_operator
                     obj.dims = dims;
                 %initialize size
                     obj = obj.update_size();
+                    obj = obj.update_dtype();
                 end
             end
         end
@@ -28,6 +30,14 @@ classdef Q_operator
         function obj = update_size(obj)
                  fe = cellfun(@(x) x(1), obj.dims); % Extracts the first element of each list
                  obj.qsize = prod(fe); % Multiplies all the first elements together
+        end
+        %update data type according to matrix of construction
+        function obj = update_dtype(obj)
+            if issparse(obj.matrix)
+                obj.dtype = 'sparse';
+            else
+                obj.dtype = 'full';
+            end
         end
         % Check compatibility for binary operation
         function isCompatible = check_mat_comp(obj, b)
@@ -48,7 +58,20 @@ classdef Q_operator
             obj.dims = B.dims;
              obj.qsize = B.qsize;
         end
-                
+        %change data type
+        function obj = dtype_conv(obj,new_type)
+            if not(strcmp(new_type, obj.dtype))
+                if strcmp(new_type ,'sparse')
+                    obj.matrix = sparse(obj.matrix);
+                    obj.dtype = 'sparse';
+                elseif strcmp(new_type ,'full')
+                    obj.matrix = full(obj.matrix);
+                    obj.dtype = 'full';
+                else
+                    error('incorrect data type')
+                end
+            end
+        end
         % Scalar or Matrix addition
         function result = plus(obj, b)
             if isa(obj, 'q_rep.Q_operator') && isa(b, 'q_rep.Q_operator')
@@ -112,25 +135,51 @@ classdef Q_operator
             result = copy_dim(result,obj);
         end
         % Compute Eigenvalue
-        function obj = e_decomp(obj)
+        function obj = e_decomp(obj,n)
+            %n speicifies the number of eigenvalues/vectors to be computed
+            %if n is not provided all eigenvalues will be computed 
             if isempty(obj.Emat)
-                [obj.Umat,obj.Emat] = eig(obj.matrix);
+                if strcmp(n ,'all')
+                    n_e = obj.qsize;
+                elseif isinteger(n)
+                    n_e = n;
+                else
+                    error('incorrect specification of number of eigenvalues')
+                end
+                [V,D] = eigs(obj.matrix,n_e);
+                if strcmp(obj.dtype,'sparse')
+                    obj.Umat = sparse(V);
+                    obj.Emat = sparse(1:n_e,1:n_e,diag(D));
+                else
+                    obj.Umat = V;
+                    obj.Emat = D;
+                end
             end
         end
         % display eigenvalue
         function result = e_val(obj)
-            obj = obj.e_decomp();
-            result = diag(obj.Emat);
+            if strcmp(obj.dtype,'sparse')
+                result = spdiags(obj.Emat);
+            else
+                result = diags(obj.Emat);
+            end
         end
         % exponential of the operator (times some scalar parameter a)
         function result = exp(obj,a)
-            r_mat = (obj.Umat)*diag(exp(a*obj.e_val))*ctranspose(obj.Umat);
+            obj = obj.e_decomp('all');
+            if strcmp(obj.dtype,'sparse')
+                Dt =  sparse(1:obj.qsize,1:obj.qsize,exp(a*obj.e_val()));
+            else
+                Dt = diag(exp(a*obj.e_val));
+            end
+            r_mat = (obj.Umat)*Dt*ctranspose(obj.Umat);
             result = q_rep.Q_operator(r_mat,obj.dims);
         end
         % Von-Neumann entropy
         function result = entropy(obj)
             result = 0;
-            evec = obj.e_val;
+            obj = obj.e_decomp('all');
+            evec = obj.e_val();
             for i = 1:length(evec)
                 if evec(i) > 0
                     result = result - evec(i)*log(evec(i));
@@ -159,28 +208,36 @@ classdef Q_operator
             trace_dim = cellfun(@(x) x(1), {obj.dims{index}});
             %generate an index array for constructing all basis
             comb_cell_vec =  arrayfun(@(x) 1:x,trace_dim,'UniformOutput', false);
-            %construct all possible indexes for iteration 
+            %construct all possible indexes for iteration, ind_array
+            % In ind_array each row represents the quantum numbers of each subspace 
+            % of a basis vector, each column represents a subspace,  
+            % example, for a 2 qubit system ind_array reads 
+            % [(0,0),(0,1), (1,0),(1,1)]
+            
             grids = cell(1, length(trace_dim));
             [grids{:}] = ndgrid(comb_cell_vec{:});
             combinations = cellfun(@(x) x(:), grids, 'UniformOutput', false);
-            ind_array = [combinations{:}];
+            ind_array = [combinations{:}]; 
             %disp(ind_array)
             %generate identity operator for each subspace (standard basis)
-            comb_cell_id =  arrayfun(@(x) eye(x),trace_dim,'UniformOutput', false);
-            %display(comb_cell_id)
             %iterate and apply all projections
-            result_mat = 0;
-            for i = 1:size(ind_array,1) % index for row of iteration grid, index of projection
+            for i = 1:size(ind_array,1) % row index of iteration grid, index of projection
                 %generate transformation matrix
-                 j=1; %this index counts subspace to be traced
-                 for k = 1:length(obj.dims) %index for all subspace
+                 j=1; %index for iteration over subspaces to be traced
+                 for k = 1:length(obj.dims) %index for iteration over all subspaces
                      new_d = obj.dims{k}(1);
                     if mask(k)
-                    %use basis for the subspace
-                        newmat = comb_cell_id{j}(:,ind_array(i,j)); %index for basis of subspace j
+                    %generate std basis (col vector) for the  jth subspace
+                    %the non-zero index is given by the (i,j) quantum number 
+                        if strcmp(obj.dtype,'sparse')
+                            newmat = sparse(ind_array(i,j),1,1,trace_dim(j),1);
+                        else
+                            newmat = zeros(trace_dim(j),1);
+                            newmat(ind_array(i,j)) = 1;
+                        end
                         j = j+1; %move the index j 1 step forward
                     else
-                        newmat = eye(new_d);
+                        newmat = speye(new_d);
                     end
                         
                     if k == 1
@@ -189,7 +246,11 @@ classdef Q_operator
                         t_mat = kron(t_mat,newmat);
                     end
                  end
-                 result_mat = result_mat + transpose(t_mat)*obj.matrix*t_mat;
+                 if i == 1 
+                    result_mat = transpose(t_mat)*obj.matrix*t_mat;
+                 else
+                    result_mat = result_mat + transpose(t_mat)*obj.matrix*t_mat;
+                 end
             end
             result = q_rep.Q_operator(result_mat,obj.dims(logical(not(mask))));
         end
