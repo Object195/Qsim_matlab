@@ -17,6 +17,7 @@ classdef Q_ket
                     obj.dims = dims;
                 %initialize size
                     obj = obj.update_size();
+                    obj = obj.update_dtype();
                 end
             end
         end

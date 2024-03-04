@@ -24,7 +24,12 @@ classdef Q_space_s
             zop = obj.ammt_tot(0.5*func.spin.Pauli_z);
             obj.J_tot = {xop,yop,zop};
         end
-        
+        function iop = I(obj)
+            %    Identity operator on the spin space
+            qsize = 2^obj.N; dims = repmat({[2,2]}, 1, obj.N);
+            iop = func.gen.identity(qsize,obj.dtype,dims);
+        end
+            
         function state = z_basis(obj,config)
             %   create the direct product basis ket for a N spin 1/2 system
             %   Input 
@@ -48,7 +53,7 @@ classdef Q_space_s
             end
         end
         
-        function sop = subop(i,sub_op)
+        function sop = subop(obj,i,sub_op)
             % create the spin operator acting on space i of N spin spaces
             % the specific form is determined by Q_operator sub_op, the
             % dimension of each spin space is determined by sub_op
@@ -72,7 +77,7 @@ classdef Q_space_s
             end
         end
         
-        function Jop = ammt_tot(sub_op)
+        function Jop = ammt_tot(obj,sub_op)
             %   create the total spin operator with specified dimension
             %   N - int, total number of spin spaces 
             %   sub_op- Q_operator, representation of single subspace spin operator

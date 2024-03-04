@@ -1,5 +1,5 @@
 %% basic operations
-ket0 = func.spin.bell_phi_p();
+ket0 = func.spin.bell('psi_p');
 ket0 = ket0.dtype_conv('full');
 disp('density matrix')
 rho0 = ket0*ket0.dag();
@@ -10,7 +10,8 @@ rho0 = rho0.e_decomp('all');
 disp(rho0.e_val())
 %% benchmark 2 level system dynamics
 H = 2*pi*0.5*func.spin.Pauli_x;
-psi0 = func.spin.z_basis(1,[0],'sparse');
+Sp = q_rep.Q_space_s(1,'sparse');
+psi0 = Sp .z_basis([0]);
 %compute population of upstate
 obs_z = psi0*psi0.dag();
 times = 0:0.01:1;

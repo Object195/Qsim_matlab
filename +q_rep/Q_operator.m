@@ -161,7 +161,7 @@ classdef Q_operator
             if strcmp(obj.dtype,'sparse')
                 result = spdiags(obj.Emat);
             else
-                result = diags(obj.Emat);
+                result = diag(obj.Emat);
             end
         end
         % exponential of the operator (times some scalar parameter a)

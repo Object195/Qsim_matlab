@@ -8,7 +8,7 @@ classdef gen
             %   state - Q_operator/Q_ket, quantum state (ket or density matrix)
             %   Output: real float
             if isa(obs, 'q_rep.Q_operator') && isa(state, 'q_rep.Q_operator')
-                C = obs*state; result = trace(C.matrix);
+                C = obs*state;result = trace(C.matrix);
             elseif (isa(obs, 'q_rep.Q_operator') && isa(state, 'q_rep.Q_ket'))
                 C = obs*(state*state.dag()); result = trace(C.matrix);
             else
@@ -31,7 +31,7 @@ classdef gen
                 error('Inputs must be instances of Q_operator and Q_operator/ket.');
             end
         end
-        function iop = identity(N,dims,dtype)
+        function iop = identity(N,dtype,dims)
             %   create an N dimensional identity operator
             %   Input 
             %   N - int, dimensnion of the space 
@@ -44,7 +44,7 @@ classdef gen
             else
                 error('incorrect data type')
             end
-            if nargin > 1
+            if nargin > 2
                 iop = q_rep.Q_operator(id,dims);
             else
                 iop = q_rep.Q_operator(id,{[N,N]});
