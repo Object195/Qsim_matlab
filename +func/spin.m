@@ -28,61 +28,50 @@ classdef spin
             end
         end
         
-        function Jop = Jn_op(direction,J_tot)
-            %   spin 1/2 operator Jn with specified direction
-            %   direction- vec, 3D vector for direction
-            %   Jtot - Cell of Q_operator, {Jx,Jy,Jz}
-            %   output:
-            %    Q_operator
-            
-            Jop = (direction(1)*J_tot{1} + direction(2)*J_tot{2} ...
-                    +direction(3)*J_tot{3});
-        end
-
-        
-        function vec = MSD_vec(state,J_tot,normalized)
+        function vec = MSD_vec(state,s_space,normalized)
             %   compute the mean spin direction given a state of spin 1/2
             %   systems
             %   state - Q_operator, quantum state of the system 
+            %   s_space - Q_space_s object
             %   Jtot - Cell of Q_operator, {Jx,Jy,Jz}
             %   output:
             %   3-vec
 
-            jx = func.gen.expect(J_tot{1},state);
-            jy = func.gen.expect(J_tot{2},state);
-            jz = func.gen.expect(J_tot{3},state);
+            jx = func.gen.expect(s_space.J_tot{1},state);
+            jy = func.gen.expect(s_space.J_tot{2},state);
+            jz = func.gen.expect(s_space.J_tot{3},state);
             if normalized
                 vec = [jx,jy,jz]/norm([jx,jy,jz]);
             else
                 vec = [jx,jy,jz];
             end
         end
-        function result = var_p(state,Jtot)
+        function result = var_p(state,s_space)
             %compute the minimum variance perpendicular to MSD
             %   state - Q_operator/ket, quantum state of the system 
             %   Jtot - Cell of Q_operator, {Jx,Jy,Jz}
             %   output:
             %   float
-            [theta,phi] = func.auxi.polar_conv(func.spin.MSD_vec(state,Jtot,1));
+            [theta,phi] = func.auxi.polar_conv(func.spin.MSD_vec(state,s_space,1));
             n1 = [-sin(phi),cos(phi),0];
             n2 = [cos(theta)*cos(phi),cos(theta)*sin(phi),-sin(theta)];
-            J1 = func.spin.Jn_op(n1,Jtot); J2 = func.spin.Jn_op(n2,Jtot);
+            J1 = s_space.Jn_op(n1); J2 = s_space.Jn_op(n2);
             J1sq = func.gen.expect(J1*J1,state); 
             J2sq = func.gen.expect(J2*J2,state);
             cov = 0.5*func.gen.expect(J1*J2 + J2*J1, state);
             result  = 0.5*(J1sq+J2sq - sqrt((J1sq-J2sq)^2 + 4*cov^2));       
         end
 
-        function result = sq_dir(state,Jtot,plot_vec)
+        function result = sq_dir(state,s_space,plot_vec)
             %   compute optimal spin direction
             %   state - Q_operator/ket, quantum state of the system 
             %   plot - bool, if true, plot the vector on Bloch sphere
             %   output:
             %   float
-            [theta,phi] = func.auxi.polar_conv(func.spin.MSD_vec(state,J_tot,1));
+            [theta,phi] = func.auxi.polar_conv(func.spin.MSD_vec(state,s_space,1));
             n1 = [-sin(phi),cos(phi),0];
             n2 = [cos(theta)*cos(phi),cos(theta)*sin(phi),-sin(theta)];
-            J1 = func.spin.Jn_op(n1,Jtot); J2 = func.spin.Jn_op(n2,Jtot);
+            J1 = s_space.Jn_op(n1); J2 = s_space.Jn_op(n2);
             J1sq = func.gen.expect(J1*J1,state); 
             J2sq = func.gen.expect(J2*J2,state);
             cov = 0.5*func.gen.expect(J1*J2 + J2*J1, state);
@@ -114,19 +103,19 @@ classdef spin
                 hold off;
             end
         end
-        function result = sq_w(state,Jtot)
+        function result = sq_w(state,s_space)
             %compute the spin squeezing parameter defined by Wineland
             %   state - Q_operator/ket, quantum state of the system 
-            %   
+            %   s_space - Q_space_s object, spin Hilbert space
             %   output:
             %   float
             N_spin = length(state.dims); 
-            var_p = func.spin.var_p(state,Jtot);
-            bnorm = (norm(func.spin.MSD_vec(state,Jtot,0)))^2;
+            var_p = func.spin.var_p(state,s_space);
+            bnorm = (norm(func.spin.MSD_vec(state,s_space,0)))^2;
             result = N_spin*var_p/bnorm;
         end
 
-        function result = sq_ku(state,Jtot)
+        function result = sq_ku(state,s_space)
             %compute the spin squeezing parameter defined by Kitagawa and
             %Ueda
             %   state - Q_operator/ket, quantum state of the system 
@@ -134,11 +123,11 @@ classdef spin
             %   output:
             %   float
             N_spin = length(state.dims); 
-            var_p = func.spin.var_p(state,Jtot);
+            var_p = func.spin.var_p(state,s_space);
             result = 4*var_p/N_spin;
         end
 
-        function result = sq_z(state_cell,Jtot,sq_type)
+        function result = sq_z(state_cell,s_space,sq_type)
             %compute the spin squeezing parameter for a cell
             %of states that polarized along z direction
             %   state_cell - cell of Q_operator/ket, quantum state of the system 
@@ -146,7 +135,9 @@ classdef spin
             %   output:
             %   1d vector of float
             N = length(state_cell{1}.dims); 
-            J1 = Jtot{1}; J2 = Jtot{2}; J3 = Jtot{3};
+            J1 = s_space.J_tot{1}; 
+            J2 = s_space.J_tot{2}; 
+            J3 =s_space.J_tot{3};
             J1sq_op = J1*J1; J2sq_op = J2*J2; 
             cov_op = 0.5 * (J1*J2 + J2*J1);
             result = zeros(1,length(state_cell));

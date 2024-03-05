@@ -92,6 +92,17 @@ classdef Q_space_s
                 end
             end
         end
+
+        function Jop = Jn_op(obj,direction)
+            %   spin 1/2 operator Jn with specified direction
+            %   direction- vec, 3D vector for direction
+            %   Jtot - Cell of Q_operator, {Jx,Jy,Jz}
+            %   output:
+            %    Q_operator
+            
+            Jop = (direction(1)*obj.J_tot{1} + direction(2)*obj.J_tot{2} ...
+                    +direction(3)*obj.J_tot{3});
+        end
         
     end
 end
