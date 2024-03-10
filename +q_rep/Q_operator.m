@@ -134,6 +134,10 @@ classdef Q_operator
             result = q_rep.Q_operator(obj.matrix');
             result = copy_dim(result,obj);
         end
+        % Unitary transformation
+        function result = U_trans(obj,U);
+            result = U*obj*U.dag();
+        end
         % Compute Eigenvalue
         function obj = e_decomp(obj,n)
             %n speicifies the number of eigenvalues/vectors to be computed
@@ -166,13 +170,13 @@ classdef Q_operator
         end
         % exponential of the operator (times some scalar parameter a)
         function result = exp(obj,a)
-            obj = obj.e_decomp('all');
-            if strcmp(obj.dtype,'sparse')
+            if strcmp(obj.dtype,'sparse') 
                 Dt =  sparse(1:obj.qsize,1:obj.qsize,exp(a*obj.e_val()));
             else
                 Dt = diag(exp(a*obj.e_val));
             end
             r_mat = (obj.Umat)*Dt*ctranspose(obj.Umat);
+            %r_mat = (obj.Umat.*exp(a*obj.e_val))*ctranspose(obj.Umat);
             result = q_rep.Q_operator(r_mat,obj.dims);
         end
         % Von-Neumann entropy
@@ -191,6 +195,27 @@ classdef Q_operator
             N = obj.qsize; rho2 = obj*obj;
             result = N/(N-1) * (1-rho2.tr());
         end
+        % maximum allowed entanglement for 2 qubit system
+        function result = max_ent(obj,ptype)
+            if obj.qsize == 4
+                obj = obj.e_decomp('all');
+                evec = sort(obj.e_val(),'descend');
+                if ptype == 'n'
+                    para = sqrt( (evec(1)-evec(3))^2 + (evec(2)-evec(4))^2) ...
+                        -evec(2)-evec(4);
+                    result = max([0,para]);
+                elseif ptype == 'f'
+                    para = evec(1)-evec(3)-2*sqrt(evec(2)*evec(4));
+                    result = max([0,para]);
+                else
+                    error('incorrect parameter type')
+                end
+            else
+                error('the function is only defined for 2*2 matirx')
+            end
+        end
+
+
         %trace
         function result = tr(obj)
             result = trace(obj.matrix);

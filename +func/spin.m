@@ -157,6 +157,109 @@ classdef spin
                 end
             end
         end
+
+        function result = sq_t(t, state, s_space, H,sq_type)
+            %compute the spin squeezing after evolving the inital state 
+            %   t - float, time for evolution 
+            %   state - Q_operator/ket, quantum state of the system 
+            %   s_space - Q_space_s object, Hilbert space of the spin
+            %   object
+            %   H - Q_operator, Hamiltonian applied
+            %   sq_type - str, type of squeezing parameter to be computed 
+            %   can be 'w' (Wineland) or 'u' (Kitagawa and Ueda) 
+            %   output:
+            %   float
+
+            % evolve the state
+            RhoT = func.te_solve.evol_dm(H,t,state);
+            %compute squeezing 
+            if sq_type == 'w'
+               result = real(func.spin.sq_w(RhoT,s_space));
+            elseif sq_type == 'u'
+               result = real(func.spin.sq_ku(RhoT,s_space));
+            else
+               error('Undefined type of spin-squeezing parameter.')
+            end
+        end
+        function result = sq_sample(sample, state, s_space, H,sq_type,plot_result)
+            %   spin squeezing by at sample points 
+            %   sample - vec of float, time points for sampling 
+            %   state - Q_operator/ket, quantum state of the system 
+            %   s_space - Q_space_s object, Hilbert space of the spin
+            %   
+            %   object
+            %   H - Q_operator, Hamiltonian applied
+            %   sq_type - str, type of squeezing parameter to be computed 
+            %   can be 'w' (Wineland) or 'u' (Kitagawa and Ueda) 
+            %   plot_result - bool, plot evolution of spin squeezing 
+            %   output:
+            %   float
+            if  (sq_type == 'w')|(sq_type == 'u')
+                result =  arrayfun(@(t) func.spin.sq_t(t, state, s_space, H,sq_type), sample);
+            else
+                error('Undefined type of spin-squeezing parameter.')
+            end
+            if plot_result
+                figure; 
+                plot(sample, result); 
+                ylim([0,2])
+                xlabel('($t$)', 'Interpreter', 'latex'); % X-axis label
+                ylabel('($\xi$)', 'Interpreter', 'latex'); % Y-axis label
+                grid on; % Show grid
+            end
+        end
+                
+
+        function result = sq_opt_sample(sample, state, s_space, H,sq_type)
+            %  compute the optimal spin squeezing by sampling 
+            %   sample - vec of float, time points for sampling 
+            %   state - Q_operator/ket, quantum state of the system 
+            %   s_space - Q_space_s object, Hilbert space of the spin
+            %   object
+            %   H - Q_operator, Hamiltonian applied
+            %   sq_type - str, type of squeezing parameter to be computed 
+            %   can be 'w' (Wineland) or 'u' (Kitagawa and Ueda) 
+            %   output:
+            %   float
+ 
+            %evolve state
+            
+            if  (sq_type == 'w')|(sq_type == 'u')
+               result =  min(func.spin.sq_sample(sample, state, s_space, H,sq_type,0));
+            elseif sq_type == 'w,u' 
+               %implement a specified schema to avoid repeated calculations
+               RhoT = func.te_solve.se_exact(H,sample,state,{}); 
+               var_vec = cellfun(@(rho) func.spin.var_p(rho,s_space), RhoT);
+               Jsq_vec = cellfun(@(rho) (norm(func.spin.MSD_vec(rho,s_space,0)))^2, RhoT);
+               resultw = min(s_space.N * var_vec./Jsq_vec);
+               resultu = min(4 * var_vec/s_space.N);
+               result = [resultw,resultu];
+            else
+                 error('Undefined type of spin-squeezing parameter.')
+            end
+        end
+
+        function result = sq_opt_search(state, s_space, H,sq_type,t_ini)
+            %   compute the optimal spin squeezing by numeric minization
+            %   
+            %   state - Q_operator/ket, quantum state of the system 
+            %   s_space - Q_space_s object, Hilbert space of the spin
+            %   object
+            %   H - Q_operator, Hamiltonian applied
+            %   sq_type - str, type of squeezing parameter to be computed 
+            %   can be 'w' (Wineland) or 'u' (Kitagawa and Ueda) 
+            %   t_ini
+            %   output:
+            %   float
+ 
+            %evolve state
+            
+            obj_fun = @(t) func.spin.sq_t(t, state, s_space, H,sq_type);
+            [t_opt,sq_opt] = fminunc(obj_fun, t_ini, ...
+                optimoptions('fminunc', 'Algorithm', 'quasi-newton','Display', 'off'));
+            result =  sq_opt;
+        end
+
     end
 end
 
