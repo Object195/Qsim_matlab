@@ -177,6 +177,8 @@ classdef spin
                result = real(func.spin.sq_w(RhoT,s_space));
             elseif sq_type == 'u'
                result = real(func.spin.sq_ku(RhoT,s_space));
+            elseif sq_type == 'e'
+                result = real(func.spin.sq_E(RhoT,s_space));
             else
                error('Undefined type of spin-squeezing parameter.')
             end
@@ -259,7 +261,49 @@ classdef spin
                 optimoptions('fminunc', 'Algorithm', 'quasi-newton','Display', 'off'));
             result =  sq_opt;
         end
+        function result = tmsq(state1,state2, s_space1, s_space2)
+            %   compute spin inequality
+            %   
+            %   state - Q_operator/ket, quantum state of the system 
+            %   s_space - Q_space_s object, Hilbert space of the spin
+            %   object
+           
+            %   output:
+            %   float
+            exp_y =  func.gen.var(s_space1.J_tot{2},state1) + func.gen.var(s_space2.J_tot{2},state2);
+            exp_z = func.gen.var(s_space1.J_tot{3},state1) + func.gen.var(s_space2.J_tot{3},state2);
+            exp_x1 = func.gen.expect(s_space1.J_tot{1},state1);
+            exp_x2 = func.gen.expect(s_space2.J_tot{1},state2);
+            result =  exp_y+exp_z - (abs(exp_x1)+ abs(exp_x2));
+        end
+        function result = cov_mat(state,s_space)
+            result = cellfun(@(obs) func.gen.expect(obs,state),s_space.C_mat);
+        end
+        function result = sq_E(state,s_space) 
+            %   compute spin squeezing parameter \xi _E 
+            %   
+            %   state - Q_operator/ket, quantum state of the system 
+            %   s_space - Q_space_s object, Hilbert space of the spin
+            %   object
+           
+            %   output:
+            %   float
+            N = s_space.N;
+            C = func.spin.cov_mat(state,s_space);
+            jvec = cellfun(@(obs) func.gen.expect(obs,state),s_space.J_tot);
+            gamma = zeros(3,3);
+            for k = 1:3
+                for l = 1:3
+                    gamma(k,l) = C(k,l)-jvec(k)*jvec(l);
+                end
+            end
+            Gamma = (N-1)*gamma+C;
+            lambda = min(eig(Gamma));
+            result = lambda/(func.gen.expect(s_space.J_2,state) - N/2);
+                
 
+        end
+            
     end
 end
 

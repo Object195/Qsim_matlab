@@ -7,6 +7,8 @@ classdef Q_space_s
         N = 1;
         dtype = 'sparse'
         J_tot = {};
+        J_2 = 0;
+        C_mat = cell(3,3);
     end
     
     methods
@@ -23,7 +25,19 @@ classdef Q_space_s
             yop = obj.ammt_tot(0.5*func.spin.Pauli_y);
             zop = obj.ammt_tot(0.5*func.spin.Pauli_z);
             obj.J_tot = {xop,yop,zop};
+            obj.J_2 = xop*xop + yop*yop + zop*zop;
         end
+
+        function obj = update_c_mat(obj)
+            %    compute all matrix representation of total ammt operators
+            %    {Jx,Jy,Jz}
+            for k = 1:3
+                for l = 1:3
+                    obj.C_mat{k,l} = 0.5*(obj.J_tot{k}*obj.J_tot{l}+obj.J_tot{l}*obj.J_tot{k});
+                end
+            end
+        end
+
         function iop = I(obj)
             %    Identity operator on the spin space
             qsize = 2^obj.N; dims = repmat({[2,2]}, 1, obj.N);
